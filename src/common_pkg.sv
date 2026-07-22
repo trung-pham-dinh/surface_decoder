@@ -6,7 +6,7 @@
 package common_pkg;
 
     //// shared parameters
-    localparam TORUS_L = 4;
+    localparam TORUS_L = 8;
     localparam int CID_BITS = $clog2(TORUS_L**2 + 1);
     //parameter int DATA_WIDTH = 64;
 

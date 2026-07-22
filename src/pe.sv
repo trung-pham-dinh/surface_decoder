@@ -56,7 +56,6 @@ module pe
 //(Note: each point is also its own cluster at the beginning)
 //////////////////////////////////////////
     logic connect_request_left, connect_request_right, connect_request_top, connect_request_bot  ;
-    cid_t connect_cid_left, connect_cid_right, connect_cid_top, connect_cid_bot;
     logic out_erasure_left_next, out_erasure_right_next, out_erasure_top_next, out_erasure_bot_next;  
 
     logic connect_request_any;
@@ -151,8 +150,11 @@ module pe
         else if (~cid_top_self_equal & in_erasure_top) begin
             dst_cid = in_cid_top;
         end
-        else begin
+        else if (~cid_bot_self_equal & in_erasure_bot)begin
             dst_cid = in_cid_bot;
+        end
+        else begin
+            dst_cid = self_cid;
         end
 
         if ((dst_cid != in_cid_left) & in_erasure_left) begin
@@ -164,7 +166,7 @@ module pe
         else if ((dst_cid != in_cid_top) & in_erasure_top) begin
             src_cid = in_cid_top;
         end
-        else begin
+        else begin // TODO: should we create another else if for bot ?
             src_cid = in_cid_bot;
         end
 

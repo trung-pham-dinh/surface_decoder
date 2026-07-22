@@ -350,10 +350,10 @@ module logical_bit_sim
 
     initial begin
         #20; rst = 0;
-        #10; syndrome_update[1][1] = 1'b1;
-             syndrome_update[2][2] = 1'b1;
-        #10; syndrome_update[1][1] = 1'b0;
-             syndrome_update[2][2] = 1'b0;
+        #10; syndrome_update[2][2] = 1'b1;
+             syndrome_update[3][3] = 1'b1;
+        #10; syndrome_update[2][2] = 1'b0;
+             syndrome_update[3][3] = 1'b0;
 
 
         #10; start = 1'b1;

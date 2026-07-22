@@ -71,7 +71,7 @@ module controller
                 pe_state   = PE_IDLE;
             end
         endcase 
-        spread_in_request = (state == LOGICAL_SPREAD);
+        spread_in_request = (state_next == LOGICAL_WAIT) && (state == LOGICAL_SPREAD);
         wait_start = spread_in_request;
     end
 
