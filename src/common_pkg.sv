@@ -32,12 +32,12 @@ package common_pkg;
     typedef struct packed {
         cid_t dst; // changed to
         cid_t src; // effected
-    } merged_cid_t;
+    } spread_cid_t;
 
 
     typedef struct packed {
-        merged_cid_t  spread_out_merge_cid;
-        logic         spread_out_merge_parity;
+        spread_cid_t spread_out_connect_cid;
+        logic        spread_out_connect_parity;
     } pe_status_t;
 
 endpackage

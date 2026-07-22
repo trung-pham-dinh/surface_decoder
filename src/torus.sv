@@ -30,15 +30,15 @@ module torus
     // Global broadcast to every PE
     , input  pe_state_e                              pe_state
     , input  logic                                   spread_in_request     
-    , input  merged_cid_t                            spread_in_merge_cid   
-    , input  logic                                   spread_in_merge_parity
+    , input  spread_cid_t                            spread_in_connect_cid   
+    , input  logic                                   spread_in_connect_parity
 
     // Per-PE syndrome interface (brought to top level)
     , input  logic [TORUS_L-1:0][TORUS_L-1:0]        syndrome_update 
     , output logic [TORUS_L-1:0][TORUS_L-1:0]        syndrome        
 
     , output pe_status_t pe_status_final
-    , output logic       spread_request_final
+    , output logic       spread_request_any
 );
 
     //-------------------------------------------------------------
@@ -58,8 +58,8 @@ module torus
     // Instantiate the lattice
     //-------------------------------------------------------------
     logic        [TORUS_L-1:0][TORUS_L-1:0] spread_out_request; 
-    merged_cid_t [TORUS_L-1:0][TORUS_L-1:0] spread_out_merge_cid;
-    logic        [TORUS_L-1:0][TORUS_L-1:0] spread_out_merge_parity;
+    spread_cid_t [TORUS_L-1:0][TORUS_L-1:0] spread_out_connect_cid;
+    logic        [TORUS_L-1:0][TORUS_L-1:0] spread_out_connect_parity;
 
     pe_status_t [TORUS_L-1:0][TORUS_L-1:0] pe_status_lattice;
     pe_status_t [TORUS_L-1:0]              pe_status_row;
@@ -116,16 +116,16 @@ module torus
 
                     // ---- spread (per-PE, exposed to top) ----
                     , .spread_in_request      ( spread_in_request)
-                    , .spread_in_merge_cid    ( spread_in_merge_cid)
-                    , .spread_in_merge_parity ( spread_in_merge_parity)
+                    , .spread_in_connect_cid    ( spread_in_connect_cid)
+                    , .spread_in_connect_parity ( spread_in_connect_parity)
                     , .spread_out_request     ( spread_out_request[i][j])
-                    , .spread_out_merge_cid   ( spread_out_merge_cid[i][j])
-                    , .spread_out_merge_parity( spread_out_merge_parity[i][j])
+                    , .spread_out_connect_cid   ( spread_out_connect_cid[i][j])
+                    , .spread_out_connect_parity( spread_out_connect_parity[i][j])
                 );
 
                 always_comb begin
-                    pe_status_lattice[i][j].spread_out_merge_cid    = spread_out_merge_cid[i][j];
-                    pe_status_lattice[i][j].spread_out_merge_parity = spread_out_merge_parity[i][j];
+                    pe_status_lattice[i][j].spread_out_connect_cid    = spread_out_connect_cid[i][j];
+                    pe_status_lattice[i][j].spread_out_connect_parity = spread_out_connect_parity[i][j];
                     spread_request_lattice[i][j]                    = spread_out_request[i][j];
                 end
             end
@@ -148,10 +148,10 @@ module torus
             pe_status_final = '0;
             for (int i = 0; i < TORUS_L; i+=1) begin: g_row
                 pe_status_final |= pe_status_row[i] 
-                                 & {$bits(pe_status_t){spread_request_row[i]}};   
+                                 & {$bits(pe_status_t){spread_request_row_rowmasked[i]}};   
             end
 
-            spread_request_final = |spread_request_row;
+            spread_request_any = |spread_request_row;
         end
     endgenerate
 

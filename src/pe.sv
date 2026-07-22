@@ -41,80 +41,73 @@ module pe
 
     // Spread
     , input  logic         spread_in_request
-    , input  merged_cid_t  spread_in_merge_cid
-    , input  logic         spread_in_merge_parity
+    , input  spread_cid_t  spread_in_connect_cid
+    , input  logic         spread_in_connect_parity
 
     , output logic         spread_out_request
-    , output merged_cid_t  spread_out_merge_cid
-    , output logic         spread_out_merge_parity
+    , output spread_cid_t  spread_out_connect_cid
+    , output logic         spread_out_connect_parity
 );
     logic self_cpar_next;
     cid_t self_cid_next;
 
 //////////////////////////////////////////
-// Grow and Merge request: 
+// Grow and Connect request: 
 //(Note: each point is also its own cluster at the beginning)
 //////////////////////////////////////////
-    logic merge_request_left, merge_request_right, merge_request_top, merge_request_bot  ;
-    cid_t merge_cid_left, merge_cid_right, merge_cid_top, merge_cid_bot;
-    logic is_merging_left, is_merging_right, is_merging_top, is_merging_bot;
+    logic connect_request_left, connect_request_right, connect_request_top, connect_request_bot  ;
+    cid_t connect_cid_left, connect_cid_right, connect_cid_top, connect_cid_bot;
     logic out_erasure_left_next, out_erasure_right_next, out_erasure_top_next, out_erasure_bot_next;  
 
-    logic merge_request_any;
-    cid_t dst_cid;
-    logic dst_cpar,merge_cpar;
+    logic connect_request_any;
+    cid_t dst_cid, src_cid;
+    logic dst_cpar;
     logic is_full_grow, grow;
     logic grow_enable;
+    logic upcoming_connect_cpar;
 
+    logic cid_left_top_equal, cid_left_right_equal, cid_left_bot_equal, cid_left_self_equal;
+    logic cid_top_right_equal, cid_top_bot_equal, cid_top_self_equal;
+    logic cid_right_bot_equal, cid_right_self_equal;
+    logic cid_bot_self_equal;
 
     always_comb begin
-        merge_request_left  = in_erasure_left  & (in_cid_left  != self_cid);
-        merge_request_right = in_erasure_right & (in_cid_right != self_cid);
-        merge_request_top   = in_erasure_top   & (in_cid_top   != self_cid);
-        merge_request_bot   = in_erasure_bot   & (in_cid_bot   != self_cid);
-
-        merge_request_any = |{merge_request_left, merge_request_right, merge_request_top, merge_request_bot};
-
-        merge_cid_left   = (merge_request_left ) ? in_cid_left  : NON_CID;
-        merge_cid_right  = (merge_request_right) ? in_cid_right : NON_CID;
-        merge_cid_top    = (merge_request_top  ) ? in_cid_top   : NON_CID;
-        merge_cid_bot    = (merge_request_bot  ) ? in_cid_bot   : NON_CID;
-
-        // Pick one request among the request
-        if (merge_request_left) begin
-            dst_cid  = in_cid_left;
-            dst_cpar = in_cpar_left;
-        end
-        else if (merge_request_right) begin
-            dst_cid  = in_cid_right;
-            dst_cpar = in_cpar_right;
-        end
-        else if (merge_request_top) begin
-            dst_cid  = in_cid_top;
-            dst_cpar = in_cpar_top;
-        end
-        else begin
-            dst_cid  = in_cid_bot;
-            dst_cpar = in_cpar_bot;
-        end
-
-        is_merging_left  = dst_cid == in_cid_left ;
-        is_merging_right = dst_cid == in_cid_right;
-        is_merging_top   = dst_cid == in_cid_top  ;
-        is_merging_bot   = dst_cid == in_cid_bot  ;
-
-        merge_cpar = self_cpar ^ dst_cpar;
-
-        is_full_grow = out_erasure_left & out_erasure_right & out_erasure_top & out_erasure_bot; 
-        grow         = ~is_full_grow & self_cpar;
-
-        // Only merge the one having the same cid as dst_cid among requests
-        // Merge has higher priority than Grow
-        out_erasure_left_next  = (merge_request_any & is_merging_left ) ? 1'b1 : (grow) ? 1'b1 : out_erasure_left ; 
-        out_erasure_right_next = (merge_request_any & is_merging_right) ? 1'b1 : (grow) ? 1'b1 : out_erasure_right; 
-        out_erasure_top_next   = (merge_request_any & is_merging_top  ) ? 1'b1 : (grow) ? 1'b1 : out_erasure_top  ; 
-        out_erasure_bot_next   = (merge_request_any & is_merging_bot  ) ? 1'b1 : (grow) ? 1'b1 : out_erasure_bot  ; 
+        cid_left_top_equal   = in_cid_left  == in_cid_top;
+        cid_left_right_equal = in_cid_left  == in_cid_right;
+        cid_left_bot_equal   = in_cid_left  == in_cid_bot;
+        cid_left_self_equal  = in_cid_left  == self_cid;
+        cid_top_right_equal  = in_cid_top   == in_cid_right;
+        cid_top_bot_equal    = in_cid_top   == in_cid_bot;
+        cid_top_self_equal   = in_cid_top   == self_cid;
+        cid_right_bot_equal  = in_cid_right == in_cid_bot;
+        cid_right_self_equal = in_cid_right == self_cid;
+        cid_bot_self_equal   = in_cid_bot   == self_cid;
     end
+    always_comb begin
+        upcoming_connect_cpar = (in_cpar_left  & in_erasure_left)
+                              ^ (in_cpar_top   & in_erasure_top   & (~cid_left_top_equal))
+                              ^ (in_cpar_right & in_erasure_right & (~cid_left_right_equal & ~cid_top_right_equal))
+                              ^ (in_cpar_bot   & in_erasure_bot   & (~cid_left_bot_equal   & ~cid_top_bot_equal   & ~cid_right_bot_equal))
+                              ^ (self_cpar                        & (~cid_left_self_equal  & ~cid_top_self_equal  & ~cid_right_self_equal & ~cid_bot_self_equal));
+        
+    end
+
+    always_comb begin
+        connect_request_left  = in_erasure_left  & ~out_erasure_left ;
+        connect_request_right = in_erasure_right & ~out_erasure_right;
+        connect_request_top   = in_erasure_top   & ~out_erasure_top  ;
+        connect_request_bot   = in_erasure_bot   & ~out_erasure_bot  ;
+
+        connect_request_any = |{connect_request_left, connect_request_right, connect_request_top, connect_request_bot};
+
+        grow = upcoming_connect_cpar;
+
+        out_erasure_left_next  = (connect_request_left  | grow) ? 1'b1 : out_erasure_left ; 
+        out_erasure_right_next = (connect_request_right | grow) ? 1'b1 : out_erasure_right; 
+        out_erasure_top_next   = (connect_request_top   | grow) ? 1'b1 : out_erasure_top  ; 
+        out_erasure_bot_next   = (connect_request_bot   | grow) ? 1'b1 : out_erasure_bot  ; 
+    end
+
     assign grow_enable = (pe_state == PE_GROW);
 
     `PRIM_FF_EN_RST(out_erasure_left , out_erasure_left_next , grow_enable, rst, clk, '0)
@@ -125,43 +118,73 @@ module pe
 //////////////////////////////////////////
 // Spread out/in
 //////////////////////////////////////////
-    merged_cid_t spread_out_merge_cid_next;
-    logic spread_out_merge_parity_next;
-    logic belong_cluster_left, belong_cluster_right, belong_cluster_top, belong_cluster_bot;
-    logic belong_cluster_any;
+    spread_cid_t spread_out_connect_cid_next;
+    logic spread_out_connect_parity_next;
+    logic spread_request_left, spread_request_right, spread_request_top, spread_request_bot;
     logic spread_request;
     logic is_spread_affected;
 
+    cid_t cid_refv;
+    logic all_same;
+
     always_comb begin
-        belong_cluster_left  = (in_cid_left  == self_cid);
-        belong_cluster_right = (in_cid_right == self_cid);
-        belong_cluster_top   = (in_cid_top   == self_cid);
-        belong_cluster_bot   = (in_cid_bot   == self_cid);
+        cid_refv = in_erasure_left  ? in_cid_left  :
+                   in_erasure_right ? in_cid_right :
+                   in_erasure_top   ? in_cid_top   : in_cid_bot;
 
-        belong_cluster_any = |{belong_cluster_left,belong_cluster_right, belong_cluster_top, belong_cluster_bot}; // more than one PEs per cluster
-        spread_request = belong_cluster_any & merge_request_any;
+        all_same = (~in_erasure_left  | (in_cid_left  == cid_refv))
+                 & (~in_erasure_right | (in_cid_right == cid_refv))
+                 & (~in_erasure_top   | (in_cid_top   == cid_refv))
+                 & (~in_erasure_bot   | (in_cid_bot   == cid_refv));
 
-        is_spread_affected = (self_cid inside {spread_in_merge_cid.src, spread_in_merge_cid.dst});
-        //is_dst_spread_affected  = (spread_out_merge_cid_next.dst inside {spread_in_merge_cid.src, spread_in_merge_cid.dst});
-        //is_src_spread_affected  = (spread_out_merge_cid_next.src inside {spread_in_merge_cid.src, spread_in_merge_cid.dst});
+        spread_request = ~all_same;
 
-        spread_out_merge_cid_next.dst = dst_cid ;
-        spread_out_merge_cid_next.src = self_cid;
-        spread_out_merge_parity_next  = merge_cpar;
+        is_spread_affected = (self_cid inside {spread_in_connect_cid.src, spread_in_connect_cid.dst});
+
+        // Pick one cid to spread
+        if (~cid_left_self_equal & in_erasure_left) begin
+            dst_cid = in_cid_left;
+        end
+        else if (~cid_right_self_equal & in_erasure_right) begin
+            dst_cid = in_cid_right;
+        end
+        else if (~cid_top_self_equal & in_erasure_top) begin
+            dst_cid = in_cid_top;
+        end
+        else begin
+            dst_cid = in_cid_bot;
+        end
+
+        if ((dst_cid != in_cid_left) & in_erasure_left) begin
+            src_cid = in_cid_left;
+        end
+        else if ((dst_cid != in_cid_right) & in_erasure_right) begin
+            src_cid = in_cid_right;
+        end
+        else if ((dst_cid != in_cid_top) & in_erasure_top) begin
+            src_cid = in_cid_top;
+        end
+        else begin
+            src_cid = in_cid_bot;
+        end
+
+        spread_out_connect_cid_next.dst = dst_cid ;
+        spread_out_connect_cid_next.src = src_cid;
+        spread_out_connect_parity_next  = upcoming_connect_cpar;
     end
 
-    `PRIM_FF_RST(spread_out_request     , spread_request              , rst, clk, '0)
-    `PRIM_FF_RST(spread_out_merge_cid   , spread_out_merge_cid_next   , rst, clk, '0)
-    `PRIM_FF_RST(spread_out_merge_parity, spread_out_merge_parity_next, rst, clk, '0)
+    `PRIM_FF_RST(spread_out_request       , spread_request                , rst, clk, '0)
+    `PRIM_FF_RST(spread_out_connect_cid   , spread_out_connect_cid_next   , rst, clk, '0)
+    `PRIM_FF_RST(spread_out_connect_parity, spread_out_connect_parity_next, rst, clk, '0)
 
 //////////////////////////////////////////
 // ???
 /////////////////////////////////////////
     always_comb begin
         if(spread_in_request & is_spread_affected) begin
-            self_cid_next = spread_in_merge_cid.dst;
+            self_cid_next = spread_in_connect_cid.dst;
         end
-        else if(merge_request_any) begin
+        else if(connect_request_any) begin
             self_cid_next = dst_cid;
         end
         else begin
@@ -172,10 +195,10 @@ module pe
             self_cpar_next = 1'b1;
         end
         else if(spread_in_request & is_spread_affected) begin
-            self_cpar_next = spread_in_merge_parity; 
+            self_cpar_next = spread_in_connect_parity; 
         end
-        else if(merge_request_any) begin
-            self_cpar_next = self_cpar ^ dst_cpar;
+        else if(connect_request_any) begin
+            self_cpar_next = upcoming_connect_cpar;
         end
         else begin
             self_cpar_next = self_cpar;
