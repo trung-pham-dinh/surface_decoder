@@ -56,9 +56,11 @@ module pe
 //(Note: each point is also its own cluster at the beginning)
 //////////////////////////////////////////
     logic connect_request_left, connect_request_right, connect_request_top, connect_request_bot  ;
+    logic belong_cluster_left, belong_cluster_right, belong_cluster_top, belong_cluster_bot;
+
     logic out_erasure_left_next, out_erasure_right_next, out_erasure_top_next, out_erasure_bot_next;  
 
-    logic connect_request_any;
+    logic connect_request_any, belong_cluster_any;
     cid_t dst_cid, src_cid;
     logic dst_cpar;
     logic is_full_grow, grow;
@@ -97,9 +99,17 @@ module pe
         connect_request_top   = in_erasure_top   & ~out_erasure_top  ;
         connect_request_bot   = in_erasure_bot   & ~out_erasure_bot  ;
 
-        connect_request_any = |{connect_request_left, connect_request_right, connect_request_top, connect_request_bot};
+        belong_cluster_left  = in_erasure_left  & out_erasure_left ;
+        belong_cluster_right = in_erasure_right & out_erasure_right;
+        belong_cluster_top   = in_erasure_top   & out_erasure_top  ;
+        belong_cluster_bot   = in_erasure_bot   & out_erasure_bot  ;
 
-        grow = upcoming_connect_cpar;
+        connect_request_any = |{connect_request_left, connect_request_right, connect_request_top, connect_request_bot};
+        belong_cluster_any  = |{belong_cluster_left , belong_cluster_right , belong_cluster_top , belong_cluster_bot};
+
+        grow = self_cpar; 
+        // Only grow if the current cpar is odd. Do not use upcomming cpar here, because
+        // Do not use upcoming_cpar here, it will grow fast, but redundant
 
         out_erasure_left_next  = (connect_request_left  | grow) ? 1'b1 : out_erasure_left ; 
         out_erasure_right_next = (connect_request_right | grow) ? 1'b1 : out_erasure_right; 
@@ -207,6 +217,8 @@ module pe
         end
         else if(connect_request_any) begin
             self_cpar_next = connect_cpar;
+            // Do not try to update with upcoming cpar, which creates heterogeneous information (for example, same cid but different cpar)
+            // which is really dangerous
         end
         else begin
             self_cpar_next = self_cpar;
