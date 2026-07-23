@@ -122,6 +122,7 @@ module pe
     logic spread_request_left, spread_request_right, spread_request_top, spread_request_bot;
     logic spread_request;
     logic is_spread_affected;
+    logic connect_cpar;
 
     cid_t cid_refv;
     logic all_same;
@@ -142,19 +143,24 @@ module pe
 
         // Pick one cid to spread
         if (~cid_left_self_equal & in_erasure_left) begin
-            dst_cid = in_cid_left;
+            dst_cid      = in_cid_left;
+            connect_cpar = in_cpar_left;
         end
         else if (~cid_right_self_equal & in_erasure_right) begin
-            dst_cid = in_cid_right;
+            dst_cid      = in_cid_right;
+            connect_cpar = in_cpar_right;
         end
         else if (~cid_top_self_equal & in_erasure_top) begin
-            dst_cid = in_cid_top;
+            dst_cid      = in_cid_top;
+            connect_cpar = in_cpar_top;
         end
         else if (~cid_bot_self_equal & in_erasure_bot)begin
-            dst_cid = in_cid_bot;
+            dst_cid      = in_cid_bot;
+            connect_cpar = in_cpar_bot;
         end
         else begin
-            dst_cid = self_cid;
+            dst_cid      = self_cid;
+            connect_cpar = self_cpar;
         end
 
         if ((dst_cid != in_cid_left) & in_erasure_left) begin
@@ -200,7 +206,7 @@ module pe
             self_cpar_next = spread_in_connect_parity; 
         end
         else if(connect_request_any) begin
-            self_cpar_next = upcoming_connect_cpar;
+            self_cpar_next = connect_cpar;
         end
         else begin
             self_cpar_next = self_cpar;

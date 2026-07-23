@@ -352,8 +352,12 @@ module logical_bit_sim
         #20; rst = 0;
         #10; syndrome_update[2][2] = 1'b1;
              syndrome_update[3][3] = 1'b1;
+             syndrome_update[5][5] = 1'b1;
+             syndrome_update[6][6] = 1'b1;
         #10; syndrome_update[2][2] = 1'b0;
              syndrome_update[3][3] = 1'b0;
+             syndrome_update[5][5] = 1'b0;
+             syndrome_update[6][6] = 1'b0;
 
 
         #10; start = 1'b1;
