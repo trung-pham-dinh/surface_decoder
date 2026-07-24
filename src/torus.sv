@@ -37,8 +37,9 @@ module torus
     , input  logic [TORUS_L-1:0][TORUS_L-1:0]        syndrome_update 
     , output logic [TORUS_L-1:0][TORUS_L-1:0]        syndrome        
 
-    , output pe_status_t pe_status_final
-    , output logic       spread_request_any
+    , output pe_status_t         pe_status_final
+    , output logic               spread_request_any
+    , output logic [TORUS_L-1:0][TORUS_L-1:0] or_erasure_edges
 );
 
     //-------------------------------------------------------------
@@ -67,7 +68,6 @@ module torus
     logic [TORUS_L-1:0] [TORUS_L-1:0] spread_request_lattice_colmasked;
     logic [TORUS_L-1:0] spread_request_row;
     logic [TORUS_L-1:0] spread_request_row_rowmasked;
-
 
     generate
         for (genvar i = 0; i < TORUS_L; i = i + 1) begin : g_lattice_row
@@ -128,8 +128,12 @@ module torus
                     pe_status_lattice[i][j].spread_out_connect_parity = spread_out_connect_parity[i][j];
                     spread_request_lattice[i][j]                    = spread_out_request[i][j];
                 end
+
+                assign or_erasure_edges[i][j] = (er_left[i][j] | er_right[i][j] | er_top[i][j] | er_bot[i][j]);
+
             end
             `PRIM_FIRST_RIGHT_1(spread_request_lattice_colmasked[i], spread_request_lattice[i])
+
         end
         `PRIM_FIRST_RIGHT_1(spread_request_row_rowmasked, spread_request_row)
     endgenerate
